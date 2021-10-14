@@ -16,12 +16,10 @@ const app = express(); // create server
 app.use(express.json());
 app.use(cors());
 
-app.get("/", (req, res) => {
-  const query = connection.query("SELECT * FROM categories");
-  query.then((result) => {
-    console.log(result.rows);
+app.get("/categories", (req, res) => {
+  const query = connection.query("SELECT * FROM categories").then((result) => {
+    res.send(result.rows);
   });
-  res.send("hello server");
 });
 
 app.listen(4000); // start server
