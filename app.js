@@ -55,4 +55,20 @@ app.post("/categories", async (req, res) => {
   }
 });
 
+app.get("/games", async (req, res) => {
+  try {
+    const query = await connection.query(`
+      SELECT 
+        games.*,
+        categories.name AS "categoryName" 
+      FROM games
+        JOIN categories
+          ON games."categoryId" = categories.id
+    `);
+    res.send(query.rows);
+  } catch {
+    res.sendStatus(500);
+  }
+});
+
 app.listen(4000); // start server
