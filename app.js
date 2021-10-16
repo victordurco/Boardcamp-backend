@@ -12,14 +12,47 @@ const connection = new Pool({
   database: "boardcamp",
 });
 
+const inputIsEmpty = (input) => {
+  if (!input || input === "") return true;
+  return false;
+};
+
+const nameIsNotAvailable = async (name, table) => {
+  const categories = await connection.query(`SELECT * FROM ${table}`);
+  return categories.rows.some((elem) => elem.name === name);
+};
+
 const app = express(); // create server
 app.use(express.json());
 app.use(cors());
 
-app.get("/categories", (req, res) => {
-  const query = connection.query("SELECT * FROM categories").then((result) => {
-    res.send(result.rows);
-  });
+app.get("/categories", async (req, res) => {
+  try {
+    const query = await connection.query("SELECT * FROM categories");
+    res.send(query.rows);
+  } catch {
+    res.sendStatus(500);
+  }
+});
+
+app.post("/categories", async (req, res) => {
+  try {
+    const { name } = req.body;
+
+    if (inputIsEmpty(name)) {
+      res.sendStatus(400);
+    } else if (await nameIsNotAvailable(name, "categories")) {
+      res.sendStatus(409);
+    } else {
+      const query = await connection.query(
+        `INSERT INTO categories (name) VALUES ($1);`,
+        [name]
+      );
+      res.sendStatus(201);
+    }
+  } catch (error) {
+    res.sendStatus(500);
+  }
 });
 
 app.listen(4000); // start server
