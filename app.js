@@ -57,15 +57,32 @@ app.post("/categories", async (req, res) => {
 
 app.get("/games", async (req, res) => {
   try {
-    const query = await connection.query(`
-      SELECT 
-        games.*,
-        categories.name AS "categoryName" 
-      FROM games
-        JOIN categories
-          ON games."categoryId" = categories.id
-    `);
-    res.send(query.rows);
+    const name = req.query.name;
+    if (name) {
+      const query = await connection.query(
+        `
+    	SELECT 
+    		games.*,
+        	categories.name AS "categoryName" 
+      	FROM games
+        	JOIN categories
+          	ON games."categoryId" = categories.id
+		WHERE games.name ~*$1
+    	`,
+        [name]
+      );
+      res.send(query.rows);
+    } else {
+      const query = await connection.query(`
+      	SELECT 
+        	games.*,
+        	categories.name AS "categoryName" 
+      	FROM games
+        	JOIN categories
+          	ON games."categoryId" = categories.id
+    	`);
+      res.send(query.rows);
+    }
   } catch {
     res.sendStatus(500);
   }
