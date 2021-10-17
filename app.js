@@ -138,4 +138,22 @@ app.post("/games", async (req, res) => {
   }
 });
 
+app.get("/customers", async (req, res) => {
+  try {
+    const cpf = req.query.cpf;
+    if (cpf) {
+      const query = await connection.query(
+        `SELECT * FROM customers WHERE customers.cpf ~*$1`,
+        [cpf]
+      );
+      res.send(query.rows);
+    } else {
+      const query = await connection.query(`SELECT * FROM customers`);
+      res.send(query.rows);
+    }
+  } catch {
+    res.sendStatus(500);
+  }
+});
+
 app.listen(4000); // start server
