@@ -133,8 +133,7 @@ app.post("/games", async (req, res) => {
       res.sendStatus(201);
     }
   } catch (error) {
-    console.log(error);
-    res.status(500).send("é aqui");
+    res.sendStatus(500);
   }
 });
 
@@ -152,6 +151,20 @@ app.get("/customers", async (req, res) => {
       res.send(query.rows);
     }
   } catch {
+    res.sendStatus(500);
+  }
+});
+
+app.get("/customers/:id", async (req, res) => {
+  try {
+    const customerId = req.params.id;
+    const query = await connection.query(
+      `SELECT * FROM customers WHERE id = $1`,
+      [customerId]
+    );
+    if (query.rowCount === 0) res.sendStatus(404);
+    else res.status(200).send(query.rows);
+  } catch (error) {
     res.sendStatus(500);
   }
 });
