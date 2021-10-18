@@ -392,4 +392,37 @@ app.post("/rentals", async (req, res) => {
   }
 });
 
+app.post("/rentals/:id/return", async (req, res) => {
+  try {
+    const rentalId = req.params.id;
+    const rentalQuery = await connection.query(
+      `SELECT * FROM rentals WHERE rentals.id = $1`,
+      [rentalId]
+    );
+    if (rentalQuery.rowCount === 0) res.sendStatus(404);
+    else if (rentalQuery.rows[0].returnDate !== null) res.sendStatus(400);
+    else {
+      const rental = rentalQuery.rows[0];
+      const today = dayjs();
+      const rentDate = dayjs(rental.rentDate);
+      const delayDays = today.diff(rentDate, "day") - rental.daysRented;
+      const pricePerDay = rental.originalPrice / rental.daysRented;
+      const delayFee = Number(delayDays * pricePerDay);
+      const updateQuery = await connection.query(
+        `
+                UPDATE rentals SET 
+                    "returnDate" = $1, 
+                    "delayFee" = $2
+                WHERE id = $3
+                `,
+        [today.format("YYYY-MM-DD"), delayFee > 0 ? delayFee : null, rentalId]
+      );
+      res.sendStatus(200);
+    }
+  } catch (error) {
+    res.sendStatus(500);
+  }
+});
+// //
+
 app.listen(4000); // start server
