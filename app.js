@@ -67,8 +67,14 @@ const customerObjIsInvalid = async (customer) => {
 };
 
 const cpfIsNotAvailable = async (cpf) => {
+  let userUsingCpf = false;
   const query = await connection.query(`SELECT * FROM customers`);
-  return query.rows.some((elem) => elem.cpf === cpf);
+  query.rows.forEach((elem) => {
+    if (elem.cpf === cpf) {
+      userUsingCpf = elem;
+    }
+  });
+  return userUsingCpf;
 };
 // //
 
@@ -220,6 +226,49 @@ app.post("/customers", async (req, res) => {
         [customer.name, customer.phone, customer.cpf, customer.birthday]
       );
       res.sendStatus(201);
+    }
+  } catch (error) {
+    res.sendStatus(500);
+  }
+});
+
+app.put("/customers/:id", async (req, res) => {
+  try {
+    const customerId = req.params.id;
+    const customerUpdate = req.body;
+    const newCpfIsNotAvailable = await cpfIsNotAvailable(customerUpdate.cpf);
+
+    const customer = await connection.query(
+      "SELECT * FROM customers WHERE customers.id = $1",
+      [customerId]
+    );
+    if (customer.rowCount === 0) res.sendStatus(404);
+    else {
+      if (await customerObjIsInvalid(customerUpdate)) {
+        res.sendStatus(400);
+      } else if (
+        newCpfIsNotAvailable &&
+        newCpfIsNotAvailable.id !== parseInt(customerId)
+      ) {
+        res.sendStatus(409);
+      } else {
+        const query = await connection.query(
+          `UPDATE customers SET 
+            name = $1,
+            phone = $2,
+            cpf = $3,
+            birthday = $4
+          WHERE id = $5`,
+          [
+            customerUpdate.name,
+            customerUpdate.phone,
+            customerUpdate.cpf,
+            customerUpdate.birthday,
+            customerId,
+          ]
+        );
+        res.sendStatus(200);
+      }
     }
   } catch (error) {
     res.sendStatus(500);
