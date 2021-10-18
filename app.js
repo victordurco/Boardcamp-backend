@@ -417,8 +417,8 @@ app.post("/rentals/:id/return", async (req, res) => {
       `SELECT * FROM rentals WHERE rentals.id = $1`,
       [rentalId]
     );
-    if (rentalQuery.rowCount === 0) res.sendStatus(404);
-    else if (rentalQuery.rows[0].returnDate !== null) res.sendStatus(400);
+    if (await rentalIdIsInvalid(rentalId)) res.sendStatus(404);
+    else if (await rentalIsFinished(rentalId)) res.sendStatus(400);
     else {
       const rental = rentalQuery.rows[0];
       const today = dayjs();
