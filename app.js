@@ -76,6 +76,16 @@ const cpfIsNotAvailable = async (cpf) => {
   });
   return userUsingCpf;
 };
+
+const customerIdIsInvalid = async (id) => {
+  const query = await connection.query("SELECT * FROM customers");
+  return query.rows.some((elem) => elem.id === id);
+};
+
+const gameIdIsInvalid = async (id) => {
+  const query = await connection.query("SELECT * FROM games");
+  return query.rows.some((elem) => elem.id === id);
+};
 // //
 
 //  CREATE SERVER
@@ -274,7 +284,38 @@ app.put("/customers/:id", async (req, res) => {
     res.sendStatus(500);
   }
 });
-
 // //
+
+// RENTALS CRUD
+app.get("/rentals", async (req, res) => {
+  try {
+    const customerId = req.query.customerId;
+    const gameId = req.query.gameId;
+    if (customerId && customerIdIsInvalid(customerId)) res.sendStatus(404);
+    else if (gameId && gameIdIsInvalid(gameId)) res.sendStatus(404);
+    else {
+      const query = await connection.query(`
+        SELECT 
+          rentals.*, 
+          customers.name AS "customerName",
+          games.name AS "gameName",
+          games."categoryId",
+          categories.name AS "categoryName" 
+        FROM rentals
+        JOIN customers
+          ON rentals."customerId" = customers.id
+        JOIN games
+          ON rentals."gameId" = games.id
+        JOIN categories
+          ON games."categoryId" = categories.id
+        ${customerId ? `WHERE rentals."customerId" = '${customerId}'` : ""}
+        ${gameId ? `WHERE rentals."gameId" = '${gameId}'` : ""}
+    `);
+      res.status(200).send(query.rows);
+    }
+  } catch {
+    res.sendStatus(500);
+  }
+});
 
 app.listen(4000); // start server
