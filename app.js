@@ -38,6 +38,7 @@ const gameObjIsInvalid = async (game) => {
   query.rows.forEach((elem) => {
     if (elem.id === category) categoryIsValid = true;
   });
+
   const { error } = gameSchema.validate(game);
   if (error || !categoryIsValid) return true;
   else return false;
@@ -85,6 +86,21 @@ const customerIdIsInvalid = async (id) => {
 const gameIdIsInvalid = async (id) => {
   const query = await connection.query("SELECT * FROM games");
   return query.rows.some((elem) => elem.id === id);
+};
+
+const gameIsAvailable = async (gameId) => {
+  let openRentals = 0;
+  const rentals = await connection.query("SELECT * FROM rentals");
+  rentals.rows.forEach((rental) => {
+    if (rental.gameId === gameId && rental.returnDate === null) openRentals++;
+  });
+
+  const game = await connection.query(
+    `SELECT * FROM games WHERE games.id = $1`,
+    [gameId]
+  );
+  if (game.rows[0].stockTotal > openRentals) return true;
+  return false;
 };
 // //
 
@@ -289,8 +305,8 @@ app.put("/customers/:id", async (req, res) => {
 // RENTALS CRUD
 app.get("/rentals", async (req, res) => {
   try {
-    const customerId = req.query.customerId;
-    const gameId = req.query.gameId;
+    const customerId = parseInt(req.query.customerId);
+    const gameId = parseInt(req.query.gameId);
     if (customerId && customerIdIsInvalid(customerId)) res.sendStatus(404);
     else if (gameId && gameIdIsInvalid(gameId)) res.sendStatus(404);
     else {
@@ -336,6 +352,40 @@ app.get("/rentals", async (req, res) => {
         };
       });
       res.status(200).send(rentals);
+    }
+  } catch {
+    res.sendStatus(500);
+  }
+});
+
+app.post("/rentals", async (req, res) => {
+  try {
+    const { customerId, gameId, daysRented } = req.body;
+    const today = dayjs().format("YYYY-MM-DD");
+    if (
+      (await customerIdIsInvalid(customerId)) ||
+      (await gameIdIsInvalid(gameId)) ||
+      (await !gameIsAvailable(gameId)) ||
+      parseInt(daysRented) <= 0
+    )
+      res.sendStatus(400);
+    else {
+      const gameQuery = await connection.query(
+        `SELECT * FROM games WHERE games.id = $1`,
+        [customerId]
+      );
+      const game = gameQuery.rows[0];
+      const originalPrice = parseInt(daysRented) * game.pricePerDay;
+      const query = await connection.query(
+        `
+            INSERT INTO 
+                rentals ("customerId", "gameId", "rentDate", "daysRented", "returnDate", "originalPrice", "delayFee")
+            VALUES
+                ($1, $2, $3, $4, $5, $6, $7)
+            `,
+        [customerId, gameId, today, daysRented, null, originalPrice, null]
+      );
+      res.sendStatus(201);
     }
   } catch {
     res.sendStatus(500);
