@@ -13,6 +13,7 @@ const connection = new Pool({
   database: "boardcamp",
 });
 
+// VALIDATION FUNCTIONS
 const inputIsEmpty = (input) => {
   if (!input || input === "") return true;
   return false;
@@ -38,15 +39,45 @@ const gameObjIsInvalid = async (game) => {
     if (elem.id === category) categoryIsValid = true;
   });
   const { error } = gameSchema.validate(game);
-  console.log(error, !categoryIsValid);
   if (error || !categoryIsValid) return true;
   else return false;
 };
 
-const app = express(); // create server
+const customerObjIsInvalid = async (customer) => {
+  const customerSchema = joi.object({
+    name: joi.string().min(3).required(),
+    phone: joi
+      .string()
+      .min(10)
+      .max(11)
+      .pattern(/[0-9]{10,11}/),
+    cpf: joi
+      .string()
+      .min(11)
+      .max(11)
+      .pattern(/[0-9]{11}/),
+    birthday: joi
+      .string()
+      .min(10)
+      .max(10)
+      .pattern(/[0-9]{4}-[0-9]{2}-[0-9]{2}/),
+  });
+  const { error } = customerSchema.validate(customer);
+  return error;
+};
+
+const cpfIsNotAvailable = async (cpf) => {
+  const query = await connection.query(`SELECT * FROM customers`);
+  return query.rows.some((elem) => elem.cpf === cpf);
+};
+// //
+
+//  CREATE SERVER
+const app = express();
 app.use(express.json());
 app.use(cors());
 
+// CATEGORIES CRUD
 app.get("/categories", async (req, res) => {
   try {
     const query = await connection.query("SELECT * FROM categories");
@@ -75,7 +106,9 @@ app.post("/categories", async (req, res) => {
     res.sendStatus(500);
   }
 });
+// //
 
+// GAMES CRUD
 app.get("/games", async (req, res) => {
   try {
     const name = req.query.name;
@@ -136,7 +169,9 @@ app.post("/games", async (req, res) => {
     res.sendStatus(500);
   }
 });
+// //
 
+// CUSTOMERS CRUD
 app.get("/customers", async (req, res) => {
   try {
     const cpf = req.query.cpf;
@@ -168,5 +203,29 @@ app.get("/customers/:id", async (req, res) => {
     res.sendStatus(500);
   }
 });
+
+app.post("/customers", async (req, res) => {
+  try {
+    const customer = req.body;
+    if (await customerObjIsInvalid(customer)) {
+      res.sendStatus(400);
+    } else if (await cpfIsNotAvailable(customer.cpf)) {
+      res.sendStatus(409);
+    } else {
+      const query = await connection.query(
+        `INSERT INTO 
+				    customers (name, phone, cpf, birthday) 
+			    VALUES 
+				    ($1, $2, $3, $4);`,
+        [customer.name, customer.phone, customer.cpf, customer.birthday]
+      );
+      res.sendStatus(201);
+    }
+  } catch (error) {
+    res.sendStatus(500);
+  }
+});
+
+// //
 
 app.listen(4000); // start server
