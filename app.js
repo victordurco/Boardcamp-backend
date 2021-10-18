@@ -13,7 +13,7 @@ const connection = new Pool({
   database: "boardcamp",
 });
 
-// VALIDATION FUNCTIONS
+// -------------- VALIDATION FUNCTIONS --------------
 const inputIsEmpty = (input) => {
   if (!input || input === "") return true;
   return false;
@@ -78,12 +78,12 @@ const cpfIsNotAvailable = async (cpf) => {
   return userUsingCpf;
 };
 
-const customerIdIsInvalid = async (id) => {
+const customerIdExist = async (id) => {
   const query = await connection.query("SELECT * FROM customers");
   return query.rows.some((elem) => elem.id === id);
 };
 
-const gameIdIsInvalid = async (id) => {
+const gameIdExist = async (id) => {
   const query = await connection.query("SELECT * FROM games");
   return query.rows.some((elem) => elem.id === id);
 };
@@ -122,7 +122,7 @@ const rentalIsFinished = async (id) => {
 };
 // //
 
-//  CREATE SERVER
+// -------------------- CREATE SERVER --------------
 const app = express();
 app.use(express.json());
 app.use(cors());
@@ -158,7 +158,7 @@ app.post("/categories", async (req, res) => {
 });
 // //
 
-// GAMES CRUD
+// ------------------- GAMES CRUD --------------------
 app.get("/games", async (req, res) => {
   try {
     const name = req.query.name;
@@ -221,7 +221,7 @@ app.post("/games", async (req, res) => {
 });
 // //
 
-// CUSTOMERS CRUD
+// ----------------------- CUSTOMERS CRUD ----------------
 app.get("/customers", async (req, res) => {
   try {
     const cpf = req.query.cpf;
@@ -320,7 +320,7 @@ app.put("/customers/:id", async (req, res) => {
 });
 // //
 
-// RENTALS CRUD
+// -----------------------  RENTALS CRUD ----------------
 app.get("/rentals", async (req, res) => {
   try {
     const customerId = req.query.customerId;
@@ -388,9 +388,10 @@ app.post("/rentals", async (req, res) => {
   try {
     const { customerId, gameId, daysRented } = req.body;
     const today = dayjs().format("YYYY-MM-DD");
+    console.log(await customerIdExist(customerId));
     if (
-      (await customerIdIsInvalid(customerId)) ||
-      (await gameIdIsInvalid(gameId)) ||
+      (await !customerIdExist(customerId)) ||
+      (await !gameIdExist(gameId)) ||
       (await !gameIsAvailable(gameId)) ||
       parseInt(daysRented) <= 0
     )
