@@ -102,6 +102,24 @@ const gameIsAvailable = async (gameId) => {
   if (game.rows[0].stockTotal > openRentals) return true;
   return false;
 };
+
+const rentalIdIsInvalid = async (id) => {
+  const query = await connection.query(
+    `SELECT * FROM rentals WHERE rentals.id = $1`,
+    [id]
+  );
+  if (query.rowCount === 0) return true;
+  return false;
+};
+
+const rentalIsFinished = async (id) => {
+  const query = await connection.query(
+    `SELECT * FROM rentals WHERE rentals.id = $1`,
+    [id]
+  );
+  if (query.rows[0].returnDate !== null) return true;
+  return false;
+};
 // //
 
 //  CREATE SERVER
@@ -421,6 +439,18 @@ app.post("/rentals/:id/return", async (req, res) => {
     }
   } catch (error) {
     res.sendStatus(500);
+  }
+});
+
+app.delete("/rentals/:id", async (req, res) => {
+  const rentalId = req.params.id;
+  if (await rentalIdIsInvalid(rentalId)) res.sendStatus(404);
+  else if (await rentalIsFinished(rentalId)) res.sendStatus(400);
+  else {
+    const query = await connection.query(`DELETE FROM rentals WHERE id = $1;`, [
+      rentalId,
+    ]);
+    res.sendStatus(200);
   }
 });
 // //
