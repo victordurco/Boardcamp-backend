@@ -323,10 +323,18 @@ app.put("/customers/:id", async (req, res) => {
 // RENTALS CRUD
 app.get("/rentals", async (req, res) => {
   try {
-    const customerId = parseInt(req.query.customerId);
-    const gameId = parseInt(req.query.gameId);
-    if (customerId && customerIdIsInvalid(customerId)) res.sendStatus(404);
-    else if (gameId && gameIdIsInvalid(gameId)) res.sendStatus(404);
+    const customerId = req.query.customerId;
+    const gameId = req.query.gameId;
+    const game = await connection.query(
+      `SELECT * FROM games WHERE games.id = $1`,
+      [gameId]
+    );
+    const customer = await connection.query(
+      `SELECT * FROM customers WHERE customers.id = $1`,
+      [customerId]
+    );
+    if (customerId && customer.rowCount === 0) res.sendStatus(404);
+    else if (gameId && game.rowCount === 0) res.sendStatus(404);
     else {
       const query = await connection.query(`
         SELECT 
