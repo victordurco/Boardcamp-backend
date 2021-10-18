@@ -127,7 +127,7 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-// CATEGORIES CRUD
+// --------------------- CATEGORIES CRUD -----------
 app.get("/categories", async (req, res) => {
   try {
     const query = await connection.query("SELECT * FROM categories");
